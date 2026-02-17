@@ -167,7 +167,7 @@ Request flow pattern change across all 4 KPI endpoints.
 
 RxJS operator pattern for handling the new cache-first backend.
 
-### Before
+### Before (Job-First Polling)
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -175,19 +175,43 @@ RxJS operator pattern for handling the new cache-first backend.
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
 │   loadKpiValues(): Observable<KpiValue[]> {                 │
-│     return this.http.get('/api/kpi/values')                 │
+│     return this.http.post('/api/kpi/values/job')  // Create │
 │       .pipe(                                                │
-│         map(response => response.data)                      │
+│         map(response => response.jobId),                    │
+│         switchMap(jobId => this.pollJobStatus(jobId))       │
 │       );                                                    │
 │   }                                                         │
 │                                                             │
+│   pollJobStatus(jobId): Observable<Result> {                │
+│     return interval(1000).pipe(                             │
+│       switchMap(() => this.http.get(`/api/job/${jobId}`)),  │
+│       takeWhile(res => res.status !== 'COMPLETED', true),   │
+│       filter(res => res.status === 'COMPLETED'),            │
+│       map(res => res.result)                                │
+│     );                                                      │
+│   }                                                         │
+│                                                             │
 └─────────────────────────────────────────────────────────────┘
-                           │
-                           ▼
-              Simple synchronous response
+
+                    Request Flow:
+    ┌──────────────────────────────────────────────────────┐
+    │                                                      │
+    │   POST /job ──▶ {jobId} ──▶ Poll GET /job/{id}      │
+    │                                    │                 │
+    │                                    ▼                 │
+    │                             [PENDING...]             │
+    │                                    │                 │
+    │                                    ▼                 │
+    │                             [COMPLETED]              │
+    │                                    │                 │
+    │                                    ▼                 │
+    │                              Use Result              │
+    │                                                      │
+    │         (Always creates job, always polls)           │
+    └──────────────────────────────────────────────────────┘
 ```
 
-### After
+### After (Cache-First)
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
