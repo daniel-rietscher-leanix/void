@@ -83,16 +83,46 @@ The most significant architectural change - monolith to focused services.
 
 Request flow pattern change across all 4 KPI endpoints.
 
-### Before (Synchronous)
+### Before (Job-First)
 
 ```
-┌────────┐    Request     ┌─────────────┐    Compute    ┌──────────┐
-│ Client │───────────────▶│   Backend   │──────────────▶│  DuckDB  │
-└────────┘                └─────────────┘               └──────────┘
-    ▲                           │                            │
-    │         Response          │         Result             │
-    └───────────────────────────┴────────────────────────────┘
-                    (Blocks until complete)
+┌────────┐    Request     ┌─────────────┐
+│ Client │───────────────▶│   Backend   │
+└────────┘                └──────┬──────┘
+    ▲                            │
+    │                    ┌───────▼───────┐
+    │                    │ Always Create │
+    │                    │     Job       │
+    │                    └───────┬───────┘
+    │                            │
+    │                    ┌───────▼───────┐
+    │    {status:        │  Return       │
+    │◀────PENDING,       │  {PENDING}    │
+    │     location}      │  + Location   │
+    │                    └───────┬───────┘
+    │                            │
+    │                            ▼
+    │                    ┌───────────────┐
+    │                    │    Worker     │
+    │                    │   Process     │
+    │                    └───────┬───────┘
+    │                            │
+    │              ┌─────────────┴─────────────┐
+    │              │                           │
+    │        [HIT] ▼                     [MISS]▼
+    │    ┌─────────────┐              ┌─────────────┐
+    │    │ Read from   │              │  Compute    │
+    │    │   Cache     │              │  (DuckDB)   │
+    │    └──────┬──────┘              └──────┬──────┘
+    │           │                            │
+    │           └────────────┬───────────────┘
+    │                        ▼
+    │         Poll     ┌───────────┐
+    └──────────────────│  Return   │
+       Location        │  Result   │
+                       └───────────┘
+
+        (Job always created, cache checked by worker)
 ```
 
 ### After (Cache-First)
