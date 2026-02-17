@@ -25,7 +25,7 @@ Shows the new API endpoint and data flow introduced.
 └─────────────┘     ├─────────────────┤     └─────────┘
                     │ getKPIValues()  │           │
       GET           │ getKPITimeseries│◀──────────┘
-   /timeseries ────▶│  (NEW)         │
+   /timeseries ────▶│  (NEW)          │
                     └─────────────────┘
                             │
                     ┌───────▼───────┐
@@ -44,19 +44,19 @@ Introduced global batching across panels - requests grouped by timeframe, not by
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                         Dashboard                                    │
+│                         Dashboard                                   │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                     │
-│  ┌─────────────┐   ┌─────────────┐   ┌─────────────┐               │
-│  │  Panel A    │   │  Panel B    │   │  Panel C    │               │
-│  │ KPI-1,KPI-2 │   │ KPI-3,KPI-4 │   │ KPI-5,KPI-6 │               │
-│  └──────┬──────┘   └──────┬──────┘   └──────┬──────┘               │
+│  ┌─────────────┐   ┌─────────────┐   ┌─────────────┐                │
+│  │  Panel A    │   │  Panel B    │   │  Panel C    │                │
+│  │ KPI-1,KPI-2 │   │ KPI-3,KPI-4 │   │ KPI-5,KPI-6 │                │
+│  └──────┬──────┘   └──────┬──────┘   └──────┬──────┘                │
 │         │                 │                 │                       │
 │         ▼                 ▼                 ▼                       │
-│    ┌─────────┐       ┌─────────┐       ┌─────────┐                 │
-│    │ POST    │       │ POST    │       │ POST    │                 │
-│    │ /job    │       │ /job    │       │ /job    │                 │
-│    └────┬────┘       └────┬────┘       └────┬────┘                 │
+│    ┌─────────┐       ┌─────────┐       ┌─────────┐                  │
+│    │ POST    │       │ POST    │       │ POST    │                  │
+│    │ /job    │       │ /job    │       │ /job    │                  │
+│    └────┬────┘       └────┬────┘       └────┬────┘                  │
 │         │                 │                 │                       │
 │         ▼                 ▼                 ▼                       │
 │      Poll #1           Poll #2           Poll #3                    │
@@ -70,13 +70,13 @@ Introduced global batching across panels - requests grouped by timeframe, not by
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                         Dashboard                                    │
+│                         Dashboard                                   │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                     │
-│  ┌─────────────┐   ┌─────────────┐   ┌─────────────┐               │
-│  │  Panel A    │   │  Panel B    │   │  Panel C    │               │
-│  │ KPI-1,KPI-2 │   │ KPI-3,KPI-4 │   │ KPI-5,KPI-6 │               │
-│  └──────┬──────┘   └──────┬──────┘   └──────┬──────┘               │
+│  ┌─────────────┐   ┌─────────────┐   ┌─────────────┐                │
+│  │  Panel A    │   │  Panel B    │   │  Panel C    │                │
+│  │ KPI-1,KPI-2 │   │ KPI-3,KPI-4 │   │ KPI-5,KPI-6 │                │
+│  └──────┬──────┘   └──────┬──────┘   └──────┬──────┘                │
 │         │                 │                 │                       │
 │         └────────────┬────┴────┬────────────┘                       │
 │                      ▼         │                                    │
@@ -114,12 +114,12 @@ Introduced global batching across panels - requests grouped by timeframe, not by
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                      System Components                               │
+│                      System Components                              │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                     │
 │  KpiValueService (orchestrator)                                     │
-│  ├── isLegacyKpi === true  → LegacyKpiLoaderService (direct GET)   │
-│  └── isLegacyKpi === false → CustomKpiBatchLoaderService (batched) │
+│  ├── isLegacyKpi === true  → LegacyKpiLoaderService (direct GET)    │
+│  └── isLegacyKpi === false → CustomKpiBatchLoaderService (batched)  │
 │                                                                     │
 │  CustomKpiBatchLoaderService                                        │
 │  ├── BatchKeyManager      (creates keys from timestamps)            │
@@ -159,8 +159,8 @@ The most significant architectural change - monolith to focused services.
 
 ```
 ┌────────────────────────────────────────────────────────────────┐
-│                    KpiDataService (Facade)                      │
-│              Delegates to specialized services                  │
+│                    KpiDataService (Facade)                     │
+│              Delegates to specialized services                 │
 └───────┬──────────┬──────────┬──────────┬──────────┬───────────┘
         │          │          │          │          │
         ▼          ▼          ▼          ▼          ▼
@@ -267,7 +267,7 @@ RxJS operator pattern for handling the new cache-first backend.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    Angular Service                           │
+│                    Angular Service                          │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
 │   loadKpiValues(): Observable<KpiValue[]> {                 │
@@ -292,7 +292,7 @@ RxJS operator pattern for handling the new cache-first backend.
                     Request Flow:
     ┌──────────────────────────────────────────────────────┐
     │                                                      │
-    │   POST /job ──▶ {jobId} ──▶ Poll GET /job/{id}      │
+    │   POST /job ──▶ {jobId} ──▶ Poll GET /job/{id}       │
     │                                    │                 │
     │                                    ▼                 │
     │                             [PENDING...]             │
@@ -311,7 +311,7 @@ RxJS operator pattern for handling the new cache-first backend.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    Angular Service                           │
+│                    Angular Service                          │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
 │   loadKpiValues(): Observable<KpiValue[]> {                 │
@@ -328,7 +328,7 @@ RxJS operator pattern for handling the new cache-first backend.
 └─────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────┐
-│                  New RxJS Utilities                          │
+│                  New RxJS Utilities                         │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
 │  getJobResult()                                             │
@@ -337,7 +337,7 @@ RxJS operator pattern for handling the new cache-first backend.
 │                                                             │
 │  handleJobResult(config)                                    │
 │  ├── ImmediateResult → config.onImmediate()                 │
-│  └── PendingResult   → config.onPending() → poll → result  │
+│  └── PendingResult   → config.onPending() → poll → result   │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 
@@ -361,9 +361,3 @@ RxJS operator pattern for handling the new cache-first backend.
 ```
 
 ---
-
-## Notes
-
-- **KPI Panel Loading Stability** work was skipped as it involved primarily bug fixes and stabilization without significant architectural changes
-- All diagrams use ASCII format for universal rendering compatibility
-- Each section shows a clear before/after state to document the architectural evolution
