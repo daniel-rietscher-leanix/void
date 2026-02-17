@@ -36,7 +36,103 @@ Shows the new API endpoint and data flow introduced.
 
 ---
 
-## 2. KpiDataService Decomposition (Feb 11-12)
+## 2. Panel Orchestration / Global Batching (Jan 30 - Feb 4)
+
+Introduced global batching across panels - requests grouped by timeframe, not by panel.
+
+### Before (Per-Panel Requests)
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                         Dashboard                                    │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  ┌─────────────┐   ┌─────────────┐   ┌─────────────┐               │
+│  │  Panel A    │   │  Panel B    │   │  Panel C    │               │
+│  │ KPI-1,KPI-2 │   │ KPI-3,KPI-4 │   │ KPI-5,KPI-6 │               │
+│  └──────┬──────┘   └──────┬──────┘   └──────┬──────┘               │
+│         │                 │                 │                       │
+│         ▼                 ▼                 ▼                       │
+│    ┌─────────┐       ┌─────────┐       ┌─────────┐                 │
+│    │ POST    │       │ POST    │       │ POST    │                 │
+│    │ /job    │       │ /job    │       │ /job    │                 │
+│    └────┬────┘       └────┬────┘       └────┬────┘                 │
+│         │                 │                 │                       │
+│         ▼                 ▼                 ▼                       │
+│      Poll #1           Poll #2           Poll #3                    │
+│         │                 │                 │                       │
+└─────────┴─────────────────┴─────────────────┴───────────────────────┘
+
+        Result: 3 panels = 3 separate API calls + 3 polling loops
+```
+
+### After (Global Batching)
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                         Dashboard                                    │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  ┌─────────────┐   ┌─────────────┐   ┌─────────────┐               │
+│  │  Panel A    │   │  Panel B    │   │  Panel C    │               │
+│  │ KPI-1,KPI-2 │   │ KPI-3,KPI-4 │   │ KPI-5,KPI-6 │               │
+│  └──────┬──────┘   └──────┬──────┘   └──────┬──────┘               │
+│         │                 │                 │                       │
+│         └────────────┬────┴────┬────────────┘                       │
+│                      ▼         │                                    │
+│              ┌───────────────┐ │                                    │
+│              │  Batch Queue  │◀┘                                    │
+│              │ (by timeframe)│                                      │
+│              └───────┬───────┘                                      │
+│                      │ 500ms debounce                               │
+│                      ▼                                              │
+│              ┌───────────────┐                                      │
+│              │  Single POST  │                                      │
+│              │  /bulk/job    │                                      │
+│              │ [all 6 KPIs]  │                                      │
+│              └───────┬───────┘                                      │
+│                      │                                              │
+│                      ▼                                              │
+│              ┌───────────────┐                                      │
+│              │  Single Poll  │                                      │
+│              └───────┬───────┘                                      │
+│                      │                                              │
+│              ┌───────▼───────┐                                      │
+│              │  Distribute   │                                      │
+│              │   Results     │                                      │
+│              └───────┬───────┘                                      │
+│         ┌────────────┼────────────┐                                 │
+│         ▼            ▼            ▼                                 │
+│     Panel A      Panel B      Panel C                               │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+
+        Result: 3 panels = 1 API call + 1 polling loop
+```
+
+### Key Components
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                      System Components                               │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  KpiValueService (orchestrator)                                     │
+│  ├── isLegacyKpi === true  → LegacyKpiLoaderService (direct GET)   │
+│  └── isLegacyKpi === false → CustomKpiBatchLoaderService (batched) │
+│                                                                     │
+│  CustomKpiBatchLoaderService                                        │
+│  ├── BatchKeyManager      (creates keys from timestamps)            │
+│  ├── RequestVersionTracker (conflict resolution on timeframe change)│
+│  ├── PanelReferenceCounter (tracks panel interest for cancellation) │
+│  └── BatchMapHelper       (distributes results to panels)           │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 3. KpiDataService Decomposition (Feb 11-12)
 
 The most significant architectural change - monolith to focused services.
 
@@ -79,7 +175,7 @@ The most significant architectural change - monolith to focused services.
 
 ---
 
-## 3. Cache-First Optimization (Feb 12-16)
+## 4. Cache-First Optimization (Feb 12-16)
 
 Request flow pattern change across all 4 KPI endpoints.
 
@@ -163,7 +259,7 @@ Request flow pattern change across all 4 KPI endpoints.
 
 ---
 
-## 4. Frontend Integration (Feb 4-11)
+## 5. Frontend Integration (Feb 4-11)
 
 RxJS operator pattern for handling the new cache-first backend.
 
